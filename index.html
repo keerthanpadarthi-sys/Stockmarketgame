@@ -4,16 +4,283 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stock Game Advisor</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400..600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #10141c;
+    --panel: #171c27;
+    --panel-2: #1d2331;
+    --border: #2a3140;
+    --text: #eceff4;
+    --muted: #8b96ac;
+    --accent: #d9a24b;
+    --accent-ink: #2a1c05;
+    --gain: #3fb88b;
+    --loss: #e2604f;
+    --caution: #e0932e;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f7f5f0;
+      --panel: #ffffff;
+      --panel-2: #fbf9f4;
+      --border: #e3dfd4;
+      --text: #1b1f27;
+      --muted: #6b7280;
+      --accent: #b8823a;
+      --accent-ink: #fff8ea;
+      --gain: #1f8f68;
+      --loss: #c43f2e;
+      --caution: #b5701e;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f5f0;
+    --panel: #ffffff;
+    --panel-2: #fbf9f4;
+    --border: #e3dfd4;
+    --text: #1b1f27;
+    --muted: #6b7280;
+    --accent: #b8823a;
+    --accent-ink: #fff8ea;
+    --gain: #1f8f68;
+    --loss: #c43f2e;
+    --caution: #b5701e;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: "Newsreader", Georgia, serif; text-wrap: balance; margin: 0; }
+  .num, input[type="number"], .price, .money, #countdownValue, .ticker {
+    font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button:focus-visible, input:focus-visible, select:focus-visible, details summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .masthead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 14px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+  .wordmark { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .wordmark h1 { font-size: 1.3rem; letter-spacing: 0.01em; }
+  .wordmark .kicker {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .masthead-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .countdown-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .countdown-pill .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--gain);
+    box-shadow: 0 0 0 0 var(--gain);
+    animation: pulse 2.2s infinite;
+  }
+  @media (prefers-reduced-motion: reduce) { .countdown-pill .dot { animation: none; } }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(63,184,139,0.55); }
+    70% { box-shadow: 0 0 0 6px rgba(63,184,139,0); }
+    100% { box-shadow: 0 0 0 0 rgba(63,184,139,0); }
+  }
+  #countdownValue { color: var(--text); font-weight: 600; }
+
+  .btn {
+    font-family: inherit;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+  .btn-text { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.78rem; padding: 0; text-decoration: underline; }
+  .btn-danger { background: none; border: none; color: var(--loss); cursor: pointer; font-size: 0.8rem; padding: 0; }
+
+  .page {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 20px 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    background: var(--panel);
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .card h2 { font-size: 1.05rem; margin-bottom: 4px; }
+  .card .card-sub { color: var(--muted); font-size: 0.8rem; margin-bottom: 14px; }
+
+  .budget-strip { display: flex; flex-direction: column; gap: 12px; }
+  .allocation-bar {
+    display: flex;
+    height: 14px;
+    border-radius: 7px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .allocation-bar span { height: 100%; }
+  .seg-deployed { background: var(--accent); }
+  .seg-remaining { background: var(--panel-2); }
+  .seg-reserve { background: repeating-linear-gradient(45deg, var(--border), var(--border) 4px, transparent 4px, transparent 8px); }
+  .allocation-legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.78rem; color: var(--muted); }
+  .allocation-legend .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+  .budget-inputs { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+  .budget-inputs label { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; color: var(--muted); }
+  .budget-inputs input { width: 140px; }
+
+  input, select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-size: 0.88rem;
+    font-family: inherit;
+  }
+
+  .rec-summary { font-size: 0.98rem; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .rec-list { display: flex; flex-direction: column; gap: 10px; }
+  .rec-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--panel-2);
+    border-left: 4px solid var(--muted);
+  }
+  .rec-card.buy { border-left-color: var(--gain); }
+  .rec-card.sell { border-left-color: var(--loss); }
+  .rec-card.trim { border-left-color: var(--caution); }
+  .rec-card .rec-main { font-weight: 600; font-size: 0.95rem; }
+  .rec-card .rec-main .ticker { font-family: "IBM Plex Mono", monospace; }
+  .rec-card .rec-reason { color: var(--muted); font-size: 0.8rem; margin-top: 3px; max-width: 56ch; }
+
+  .badge {
+    padding: 3px 9px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .badge-BUY { background: rgba(63,184,139,0.16); color: var(--gain); }
+  .badge-SELL { background: rgba(226,96,79,0.16); color: var(--loss); }
+  .badge-TRIM { background: rgba(224,147,46,0.16); color: var(--caution); }
+  .badge-HOLD, .badge-WATCH { background: rgba(139,150,172,0.16); color: var(--muted); }
+  .badge-AVOID { background: rgba(226,96,79,0.08); color: var(--loss); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); }
+  td.num, th.num { text-align: right; font-family: "IBM Plex Mono", monospace; }
+  th { color: var(--muted); font-weight: 500; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  tbody tr:last-child td { border-bottom: none; }
+  .table-scroll { overflow-x: auto; }
+  .gain-text { color: var(--gain); }
+  .loss-text { color: var(--loss); }
+
+  .inline-form { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .inline-form input { flex: 1; min-width: 90px; }
+
+  details.card summary { cursor: pointer; font-family: "Newsreader", serif; font-size: 1.05rem; list-style: none; }
+  details.card summary::-webkit-details-marker { display: none; }
+  details.card summary::before { content: "+ "; color: var(--accent); font-family: "IBM Plex Mono", monospace; }
+  details.card[open] summary::before { content: "\2212 "; }
+  details.card summary { margin-bottom: 4px; }
+  details.card[open] summary { margin-bottom: 14px; }
+
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 700px) { .settings-grid { grid-template-columns: 1fr; } }
+  .settings-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 0.82rem; color: var(--muted); }
+  .checkbox-row { flex-direction: row !important; align-items: center; gap: 8px !important; grid-column: 1 / -1; }
+
+  .manual-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .manual-grid label { display: flex; align-items: center; justify-content: space-between; background: var(--panel-2); padding: 6px 10px; border-radius: 6px; font-size: 0.82rem; color: var(--text); }
+  .manual-grid input { width: 84px; }
+
+  .history-list { display: flex; flex-direction: column; gap: 7px; max-height: 280px; overflow-y: auto; }
+  .history-entry { padding: 8px 10px; border-radius: 6px; background: var(--panel-2); font-size: 0.8rem; }
+  .history-entry .history-time { color: var(--muted); margin-right: 8px; font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; }
+
+  footer { max-width: 1040px; margin: 0 auto; padding: 0 20px 40px; color: var(--muted); font-size: 0.76rem; }
+  footer a { color: var(--muted); text-decoration: underline; }
+</style>
 </head>
 <body>
-<header class="topbar">
-  <div class="topbar-title">
+
+<header class="masthead">
+  <div class="wordmark">
     <h1>Stock Game Advisor</h1>
-    <p class="subtitle">Decision support for your <a href="https://www.stockmarketgame.org/pa.html" target="_blank" rel="noopener">Stock Market Game</a> portfolio</p>
+    <span class="kicker">Paper trading</span>
   </div>
-  <div class="topbar-actions">
-    <div class="countdown">
+  <div class="masthead-right">
+    <div class="countdown-pill">
+      <span class="dot"></span>
       <span id="countdownLabel">Next check-in</span>
       <span id="countdownValue">--:--</span>
     </div>
@@ -21,46 +288,57 @@
   </div>
 </header>
 
-<main>
-  <section class="card" id="budgetCard">
+<div class="page">
+
+  <div class="banner" id="sampleBanner">
+    <span>Showing example holdings, a sample watchlist, and made-up prices so you can see how the advisor works. Edit everything below to match your own <a href="https://www.stockmarketgame.org/pa.html" target="_blank" rel="noopener">Stock Market Game</a> portfolio.</span>
+    <button class="btn-text" id="dismissBannerBtn">Start fresh instead</button>
+  </div>
+
+  <section class="card budget-strip" id="budgetCard">
     <h2>Trading budget</h2>
-    <div class="budget-grid">
+    <p class="card-sub">The advisor will never size a buy that pushes deployed capital past your cap.</p>
+    <div class="allocation-bar" aria-hidden="true">
+      <span class="seg-deployed" id="segDeployed"></span>
+      <span class="seg-remaining" id="segRemaining"></span>
+      <span class="seg-reserve" id="segReserve"></span>
+    </div>
+    <div class="allocation-legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Deployed <strong id="deployedValue" class="money">$0</strong></span>
+      <span><span class="swatch" style="background:var(--panel-2);border:1px solid var(--border)"></span>Available to invest <strong id="remainingValue" class="money">$0</strong></span>
+      <span><span class="swatch" style="background:repeating-linear-gradient(45deg,var(--border),var(--border) 2px,transparent 2px,transparent 4px)"></span>Reserve, never touched <strong id="reserveValue" class="money">$0</strong></span>
+    </div>
+    <div class="budget-inputs">
       <label>Total bankroll ($)
         <input type="number" id="bankrollInput" step="1000" min="0">
       </label>
-      <label>Amount the advisor may put to work ($)
+      <label>Amount the advisor may deploy ($)
         <input type="number" id="tradingCapInput" step="1000" min="0">
       </label>
-    </div>
-    <div class="budget-bar-wrap">
-      <div class="budget-bar"><div id="budgetBarFill" class="budget-bar-fill"></div></div>
-      <div class="budget-legend">
-        <span><strong id="deployedValue">$0</strong> deployed</span>
-        <span><strong id="remainingValue">$0</strong> available to invest</span>
-        <span><strong id="reserveValue">$0</strong> held in reserve, never touched</span>
-      </div>
     </div>
   </section>
 
   <section class="card" id="recommendationCard">
     <h2>What to do right now</h2>
-    <div id="recommendationSummary" class="recommendation-summary">
-      Run an analysis to get a recommendation.
-    </div>
-    <div id="recommendationList" class="recommendation-list"></div>
+    <p class="card-sub">Rule-based calls from momentum and trend &mdash; not predictions.</p>
+    <div id="recommendationSummary" class="rec-summary">Run an analysis to get a recommendation.</div>
+    <div id="recommendationList" class="rec-list"></div>
   </section>
 
-  <div class="two-col">
+  <div class="grid-2">
     <section class="card" id="holdingsCard">
-      <h2>Current holdings <span class="hint">(update after each trade you make on the game site)</span></h2>
-      <table id="holdingsTable">
-        <thead>
-          <tr><th>Symbol</th><th>Shares</th><th>Avg cost</th><th>Price</th><th>Value</th><th>P/L</th><th></th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <h2>Current holdings</h2>
+      <p class="card-sub">Update this after each trade you make on the game site.</p>
+      <div class="table-scroll">
+        <table id="holdingsTable">
+          <thead>
+            <tr><th>Symbol</th><th class="num">Shares</th><th class="num">Avg cost</th><th class="num">Price</th><th class="num">Value</th><th class="num">P/L</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
       <form id="addHoldingForm" class="inline-form">
-        <input type="text" id="holdingSymbol" placeholder="Symbol e.g. AAPL" maxlength="8" required>
+        <input type="text" id="holdingSymbol" placeholder="Symbol" maxlength="8" required>
         <input type="number" id="holdingShares" placeholder="Shares" min="0" step="1" required>
         <input type="number" id="holdingAvgCost" placeholder="Avg cost $" min="0" step="0.01" required>
         <button type="submit" class="btn">Add / update</button>
@@ -69,35 +347,38 @@
 
     <section class="card" id="watchlistCard">
       <h2>Watchlist</h2>
-      <table id="watchlistTable">
-        <thead>
-          <tr><th>Symbol</th><th>Price</th><th>Change</th><th>Score</th><th>Signal</th><th></th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <p class="card-sub">Symbols the advisor scores for new buys.</p>
+      <div class="table-scroll">
+        <table id="watchlistTable">
+          <thead>
+            <tr><th>Symbol</th><th class="num">Price</th><th class="num">Change</th><th>Signal</th><th class="num">If buying today</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
       <form id="addWatchForm" class="inline-form">
-        <input type="text" id="watchSymbol" placeholder="Symbol e.g. MSFT" maxlength="8" required>
+        <input type="text" id="watchSymbol" placeholder="Symbol" maxlength="8" required>
         <button type="submit" class="btn">Add to watchlist</button>
       </form>
     </section>
   </div>
 
-  <section class="card" id="manualPricesCard" hidden>
-    <h2>Manual prices <span class="hint">(used when live data isn't available)</span></h2>
-    <p class="hint">Enter current prices from the game site's quote page for each symbol below, then run the analysis.</p>
+  <section class="card" id="manualPricesCard">
+    <h2>Manual prices <span class="card-sub" style="display:inline">(used when live data isn&rsquo;t available)</span></h2>
+    <p class="card-sub">Enter current prices from the game site&rsquo;s quote page for each symbol, then run the analysis.</p>
     <div id="manualPricesGrid" class="manual-grid"></div>
   </section>
 
-  <section class="card" id="settingsCard">
-    <h2>Settings</h2>
+  <details class="card" id="settingsCard">
+    <summary>Settings</summary>
     <div class="settings-grid">
       <label>Data source
         <select id="dataModeSelect">
-          <option value="live">Live quotes (Finnhub API)</option>
           <option value="manual">Manual entry</option>
+          <option value="live">Live quotes (Finnhub API)</option>
         </select>
       </label>
-      <label>Finnhub API key <span class="hint">(free at finnhub.io, kept only in this browser)</span>
+      <label>Finnhub API key <span style="font-size:0.72rem">(free at finnhub.io, kept only in this browser)</span>
         <input type="text" id="apiKeyInput" placeholder="Paste API key">
       </label>
       <label>Check-in frequency
@@ -106,23 +387,577 @@
           <option value="60">Every hour</option>
         </select>
       </label>
-      <label class="checkbox-label">
+      <label class="checkbox-row">
         <input type="checkbox" id="notificationsToggle">
         Notify me in the browser when a new recommendation is ready
       </label>
     </div>
-  </section>
+  </details>
 
-  <section class="card" id="historyCard">
-    <h2>Recommendation history</h2>
+  <details class="card" id="historyCard">
+    <summary>Recommendation history</summary>
     <div id="historyList" class="history-list"></div>
-  </section>
-</main>
+  </details>
+
+</div>
 
 <footer>
-  <p>This tool analyzes real market data to produce rule-based, educational suggestions for the <em>Stock Market Game</em> paper-trading simulation only. It is not financial advice and does not place trades for you &mdash; execute anything you decide on the <a href="https://www.stockmarketgame.org/pa.html" target="_blank" rel="noopener">game site</a> yourself, then update your holdings here.</p>
+  <p>This tool analyzes made-up and/or user-supplied prices to produce rule-based, educational suggestions for the <em>Stock Market Game</em> paper-trading simulation only. It is not financial advice and does not place trades for you &mdash; execute anything you decide on the <a href="https://www.stockmarketgame.org/pa.html" target="_blank" rel="noopener">game site</a> yourself, then update your holdings above. All data you enter stays in this browser only.</p>
 </footer>
 
-<script type="module" src="js/app.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "stockGameAdvisor.state.v2";
+
+  function sampleState() {
+    return {
+      bankroll: 100000,
+      tradingCap: 50000,
+      holdings: [
+        { symbol: "AAPL", shares: 20, avgCost: 187.50 },
+        { symbol: "NVDA", shares: 10, avgCost: 118.20 }
+      ],
+      watchlist: ["MSFT", "AMZN", "GOOGL", "AVGO"],
+      apiKey: "",
+      dataMode: "manual",
+      refreshMinutes: 30,
+      notificationsEnabled: false,
+      manualPrices: {
+        AAPL: 192.10, NVDA: 109.40,
+        MSFT: 421.30, AMZN: 205.80, GOOGL: 178.40, AVGO: 231.90
+      },
+      priceHistory: {
+        AAPL: [{ ts: Date.now() - 3600000, price: 189.00 }],
+        NVDA: [{ ts: Date.now() - 3600000, price: 118.00 }],
+        MSFT: [{ ts: Date.now() - 3600000, price: 410.00 }],
+        AMZN: [{ ts: Date.now() - 3600000, price: 204.00 }],
+        GOOGL: [{ ts: Date.now() - 3600000, price: 177.00 }],
+        AVGO: [{ ts: Date.now() - 3600000, price: 214.00 }]
+      },
+      history: [],
+      lastRun: null,
+      isSample: true
+    };
+  }
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return sampleState();
+      var parsed = JSON.parse(raw);
+      var base = sampleState();
+      return Object.assign({}, base, parsed);
+    } catch (e) {
+      return sampleState();
+    }
+  }
+
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function allSymbols() {
+    var set = {};
+    state.watchlist.forEach(function (s) { set[s] = true; });
+    state.holdings.forEach(function (h) { set[h.symbol] = true; });
+    return Object.keys(set);
+  }
+
+  var state = loadState();
+
+  function $(id) { return document.getElementById(id); }
+  function money(n) { return "$" + Math.round(n).toLocaleString(); }
+
+  // ---------- quotes ----------
+
+  function manualQuote(symbol) {
+    var price = state.manualPrices[symbol];
+    if (typeof price !== "number" || price <= 0) return null;
+    return { price: price, prevClose: price, high: price, low: price, open: price, ts: Date.now(), source: "manual" };
+  }
+
+  async function fetchLiveQuote(symbol, apiKey) {
+    var url = "https://finnhub.io/api/v1/quote?symbol=" + encodeURIComponent(symbol) + "&token=" + encodeURIComponent(apiKey);
+    var res = await fetch(url);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    var data = await res.json();
+    if (typeof data.c !== "number" || data.c === 0) throw new Error("No data for symbol");
+    return { price: data.c, prevClose: data.pc, high: data.h, low: data.l, open: data.o, ts: Date.now(), source: "live" };
+  }
+
+  async function fetchAllQuotes(symbols) {
+    var quotes = {};
+    var errors = {};
+    var useLive = state.dataMode === "live" && state.apiKey.trim().length > 0;
+
+    await Promise.all(symbols.map(async function (symbol) {
+      if (useLive) {
+        try {
+          quotes[symbol] = await fetchLiveQuote(symbol, state.apiKey.trim());
+          return;
+        } catch (e) {
+          errors[symbol] = "Live fetch failed (" + e.message + "), falling back to manual price.";
+        }
+      }
+      var manual = manualQuote(symbol);
+      if (manual) quotes[symbol] = manual;
+      else if (!errors[symbol]) errors[symbol] = "No live data and no manual price set.";
+    }));
+
+    return { quotes: quotes, errors: errors };
+  }
+
+  // ---------- engine ----------
+
+  var HISTORY_POINTS_PER_SYMBOL = 40;
+  var MAX_POSITION_SHARE = 0.25;
+
+  function recordPriceHistory(symbol, quote) {
+    var history = state.priceHistory[symbol] || [];
+    history.push({ ts: quote.ts, price: quote.price });
+    if (history.length > HISTORY_POINTS_PER_SYMBOL) history.shift();
+    state.priceHistory[symbol] = history;
+  }
+
+  function sessionTrendPct(symbol) {
+    var history = state.priceHistory[symbol] || [];
+    if (history.length < 2) return 0;
+    var first = history[0].price;
+    var last = history[history.length - 1].price;
+    if (!first) return 0;
+    return ((last - first) / first) * 100;
+  }
+
+  function deployedCapital() {
+    return state.holdings.reduce(function (sum, h) { return sum + h.shares * h.avgCost; }, 0);
+  }
+
+  function remainingBudget() {
+    return Math.max(0, state.tradingCap - deployedCapital());
+  }
+
+  function scoreQuote(symbol, quote) {
+    var dayChangePct = quote.prevClose ? ((quote.price - quote.prevClose) / quote.prevClose) * 100 : 0;
+    var trendPct = sessionTrendPct(symbol);
+    var rangePct = quote.low ? ((quote.high - quote.low) / quote.low) * 100 : 0;
+    var score = dayChangePct * 0.6 + trendPct * 0.4 - rangePct * 0.15;
+    var overbought = dayChangePct > 8 || trendPct > 12;
+    return { dayChangePct: dayChangePct, trendPct: trendPct, rangePct: rangePct, score: score, overbought: overbought };
+  }
+
+  function suggestedBuy(symbol, quote) {
+    var budget = remainingBudget();
+    if (budget < quote.price) return null;
+    var capForOneSymbol = state.tradingCap * MAX_POSITION_SHARE;
+    var dollars = Math.min(budget, capForOneSymbol);
+    var shares = Math.floor(dollars / quote.price);
+    if (shares <= 0) return null;
+    return { shares: shares, dollars: shares * quote.price };
+  }
+
+  function buildRecommendations(quotes) {
+    var items = [];
+    var holdingsBySymbol = {};
+    state.holdings.forEach(function (h) { holdingsBySymbol[h.symbol] = h; });
+
+    Object.keys(quotes).forEach(function (symbol) {
+      var quote = quotes[symbol];
+      var metrics = scoreQuote(symbol, quote);
+      var holding = holdingsBySymbol[symbol];
+
+      if (holding) {
+        var plPct = holding.avgCost ? ((quote.price - holding.avgCost) / holding.avgCost) * 100 : 0;
+        if (plPct <= -8 || metrics.trendPct <= -10) {
+          items.push({ type: "SELL", symbol: symbol, shares: holding.shares, dollars: holding.shares * quote.price, score: metrics.score,
+            reason: "Down " + Math.abs(plPct).toFixed(1) + "% from your average cost and trending lower (" + metrics.trendPct.toFixed(1) + "% this session). Cutting the loss frees up budget." });
+        } else if (plPct >= 15 || metrics.trendPct >= 18) {
+          var half = Math.max(1, Math.floor(holding.shares / 2));
+          items.push({ type: "TRIM", symbol: symbol, shares: half, dollars: half * quote.price, score: metrics.score,
+            reason: "Up " + plPct.toFixed(1) + "% from your average cost. Consider locking in some of the gain and keeping the rest to ride further upside." });
+        } else {
+          items.push({ type: "HOLD", symbol: symbol, shares: holding.shares, dollars: holding.shares * quote.price, score: metrics.score,
+            reason: "P/L " + (plPct >= 0 ? "+" : "") + plPct.toFixed(1) + "%, no strong signal either way yet." });
+        }
+      } else {
+        var buy = suggestedBuy(symbol, quote);
+        var sizeShares = buy ? buy.shares : null;
+        var sizeDollars = buy ? buy.dollars : null;
+
+        if (metrics.overbought) {
+          items.push({ type: "AVOID", symbol: symbol, score: metrics.score, sizeShares: sizeShares, sizeDollars: sizeDollars,
+            reason: "Up " + metrics.dayChangePct.toFixed(1) + "% today / " + metrics.trendPct.toFixed(1) + "% this session - likely overbought, wait for a pullback." });
+        } else if (metrics.score > 1.5) {
+          if (buy) {
+            items.push({ type: "BUY", symbol: symbol, shares: buy.shares, dollars: buy.dollars, sizeShares: sizeShares, sizeDollars: sizeDollars, score: metrics.score,
+              reason: "Momentum +" + metrics.dayChangePct.toFixed(1) + "% today, session trend +" + metrics.trendPct.toFixed(1) + "%. Sized to stay inside your trading budget." });
+          } else {
+            items.push({ type: "WATCH", symbol: symbol, score: metrics.score, sizeShares: sizeShares, sizeDollars: sizeDollars,
+              reason: "Positive momentum, but no trading budget left to size a buy right now." });
+          }
+        } else if (metrics.score < -1.5) {
+          items.push({ type: "AVOID", symbol: symbol, score: metrics.score, sizeShares: sizeShares, sizeDollars: sizeDollars,
+            reason: "Negative momentum (" + metrics.dayChangePct.toFixed(1) + "% today, " + metrics.trendPct.toFixed(1) + "% this session)." });
+        } else {
+          items.push({ type: "WATCH", symbol: symbol, score: metrics.score, sizeShares: sizeShares, sizeDollars: sizeDollars,
+            reason: "No clear edge yet, keep watching. If you bought now, budget allows " + (sizeShares ? sizeShares + " sh (~" + money(sizeDollars) + ")" : "none") + "." });
+        }
+      }
+    });
+
+    var priority = { SELL: 0, TRIM: 1, BUY: 2, WATCH: 3, HOLD: 4, AVOID: 5 };
+    items.sort(function (a, b) { return (priority[a.type] - priority[b.type]) || (b.score - a.score); });
+
+    var actionable = items.filter(function (i) { return i.type === "BUY" || i.type === "SELL" || i.type === "TRIM"; });
+    var summary;
+    if (actionable.length === 0) {
+      summary = "Nothing actionable right now - holding steady and keep watching the list.";
+    } else {
+      summary = actionable.slice(0, 3).map(function (i) {
+        return i.type + " " + (i.shares ? i.shares + " sh " : "") + i.symbol;
+      }).join("  |  ");
+    }
+
+    return { summary: summary, items: items };
+  }
+
+  // ---------- rendering ----------
+
+  var countdownTimer = null;
+  var secondsLeft = 0;
+
+  function refreshIntervalSeconds() { return state.refreshMinutes * 60; }
+
+  function syncSettingsInputs() {
+    $("bankrollInput").value = state.bankroll;
+    $("tradingCapInput").value = state.tradingCap;
+    $("dataModeSelect").value = state.dataMode;
+    $("apiKeyInput").value = state.apiKey;
+    $("refreshMinutesSelect").value = String(state.refreshMinutes);
+    $("notificationsToggle").checked = state.notificationsEnabled;
+    $("manualPricesCard").hidden = state.dataMode !== "manual";
+    $("sampleBanner").hidden = !state.isSample;
+  }
+
+  function renderBudget() {
+    var deployed = deployedCapital();
+    var remaining = remainingBudget();
+    var reserve = Math.max(0, state.bankroll - state.tradingCap);
+    var total = Math.max(1, state.bankroll);
+    $("segDeployed").style.width = (Math.min(deployed, state.tradingCap) / total * 100) + "%";
+    $("segRemaining").style.width = (remaining / total * 100) + "%";
+    $("segReserve").style.width = (reserve / total * 100) + "%";
+    $("deployedValue").textContent = money(deployed);
+    $("remainingValue").textContent = money(remaining);
+    $("reserveValue").textContent = money(reserve);
+  }
+
+  function renderManualPricesGrid() {
+    var grid = $("manualPricesGrid");
+    var symbols = allSymbols();
+    grid.innerHTML = "";
+    symbols.forEach(function (symbol) {
+      var label = document.createElement("label");
+      var span = document.createElement("span");
+      span.className = "ticker";
+      span.textContent = symbol;
+      var input = document.createElement("input");
+      input.type = "number";
+      input.step = "0.01";
+      input.min = "0";
+      input.id = "manualPrice_" + symbol;
+      input.value = state.manualPrices[symbol] != null ? state.manualPrices[symbol] : "";
+      input.addEventListener("change", function () {
+        var val = parseFloat(input.value);
+        if (!isNaN(val) && val > 0) { state.manualPrices[symbol] = val; saveState(); }
+      });
+      label.appendChild(span);
+      label.appendChild(input);
+      grid.appendChild(label);
+    });
+  }
+
+  function renderHoldings(latestQuotes) {
+    latestQuotes = latestQuotes || {};
+    var tbody = document.querySelector("#holdingsTable tbody");
+    tbody.innerHTML = "";
+    state.holdings.forEach(function (h) {
+      var quote = latestQuotes[h.symbol];
+      var price = quote ? quote.price : h.avgCost;
+      var value = price * h.shares;
+      var pl = value - h.shares * h.avgCost;
+      var plPct = h.avgCost ? (pl / (h.shares * h.avgCost)) * 100 : 0;
+
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td class=\"ticker\">" + h.symbol + "</td>" +
+        "<td class=\"num\">" + h.shares + "</td>" +
+        "<td class=\"num\">$" + h.avgCost.toFixed(2) + "</td>" +
+        "<td class=\"num\">$" + price.toFixed(2) + "</td>" +
+        "<td class=\"num\">" + money(value) + "</td>" +
+        "<td class=\"num " + (pl >= 0 ? "gain-text" : "loss-text") + "\">" + (pl >= 0 ? "+" : "") + money(pl) + " (" + plPct.toFixed(1) + "%)</td>" +
+        "<td><button class=\"btn-danger\" data-remove-holding=\"" + h.symbol + "\">Remove</button></td>";
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll("[data-remove-holding]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var symbol = btn.getAttribute("data-remove-holding");
+        state.holdings = state.holdings.filter(function (h) { return h.symbol !== symbol; });
+        saveState();
+        renderAll();
+      });
+    });
+  }
+
+  function renderWatchlist(latestQuotes, recommendations) {
+    latestQuotes = latestQuotes || {};
+    var tbody = document.querySelector("#watchlistTable tbody");
+    tbody.innerHTML = "";
+    var bySymbol = {};
+    (recommendations ? recommendations.items : []).forEach(function (i) { bySymbol[i.symbol] = i; });
+
+    state.watchlist.forEach(function (symbol) {
+      var quote = latestQuotes[symbol];
+      var rec = bySymbol[symbol];
+      var price = quote ? quote.price : null;
+      var changePct = quote && quote.prevClose ? ((quote.price - quote.prevClose) / quote.prevClose) * 100 : null;
+
+      var sizeText = "-";
+      if (rec && rec.sizeShares) {
+        sizeText = rec.sizeShares + " sh (~" + money(rec.sizeDollars) + ")";
+      } else if (rec && price !== null && remainingBudget() < price) {
+        sizeText = "budget too low";
+      }
+
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td class=\"ticker\">" + symbol + "</td>" +
+        "<td class=\"num\">" + (price !== null ? "$" + price.toFixed(2) : "-") + "</td>" +
+        "<td class=\"num " + (changePct !== null ? (changePct >= 0 ? "gain-text" : "loss-text") : "") + "\">" + (changePct !== null ? (changePct >= 0 ? "+" : "") + changePct.toFixed(2) + "%" : "-") + "</td>" +
+        "<td>" + (rec ? "<span class=\"badge badge-" + rec.type + "\">" + rec.type + "</span>" : "-") + "</td>" +
+        "<td class=\"num\">" + sizeText + "</td>" +
+        "<td><button class=\"btn-danger\" data-remove-watch=\"" + symbol + "\">Remove</button></td>";
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll("[data-remove-watch]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var symbol = btn.getAttribute("data-remove-watch");
+        state.watchlist = state.watchlist.filter(function (s) { return s !== symbol; });
+        saveState();
+        renderAll();
+      });
+    });
+  }
+
+  function renderRecommendations(recommendations) {
+    $("recommendationSummary").textContent = recommendations ? recommendations.summary : "Run an analysis to get a recommendation.";
+    var list = $("recommendationList");
+    list.innerHTML = "";
+    if (!recommendations) return;
+
+    recommendations.items
+      .filter(function (i) { return i.type !== "HOLD" && i.type !== "AVOID"; })
+      .forEach(function (item) {
+        var div = document.createElement("div");
+        div.className = "rec-card " + item.type.toLowerCase();
+        var main = (item.type === "BUY" || item.type === "SELL" || item.type === "TRIM")
+          ? item.type + " <span class=\"ticker\">" + item.shares + " sh " + item.symbol + "</span> (~" + money(item.dollars) + ")"
+          : item.type + " <span class=\"ticker\">" + item.symbol + "</span>";
+        div.innerHTML =
+          "<div><div class=\"rec-main\">" + main + "</div><div class=\"rec-reason\">" + item.reason + "</div></div>" +
+          "<span class=\"badge badge-" + item.type + "\">" + item.type + "</span>";
+        list.appendChild(div);
+      });
+  }
+
+  function renderHistory() {
+    var container = $("historyList");
+    container.innerHTML = "";
+    if (state.history.length === 0) {
+      container.innerHTML = "<p class=\"card-sub\">No runs yet.</p>";
+      return;
+    }
+    state.history.slice().reverse().forEach(function (entry) {
+      var div = document.createElement("div");
+      div.className = "history-entry";
+      var time = new Date(entry.ts).toLocaleString();
+      div.innerHTML = "<span class=\"history-time\">" + time + "</span>" + entry.summary;
+      container.appendChild(div);
+    });
+  }
+
+  function renderAll(latestQuotes, recommendations) {
+    renderBudget();
+    renderHoldings(latestQuotes);
+    renderWatchlist(latestQuotes, recommendations);
+    renderManualPricesGrid();
+    renderRecommendations(recommendations);
+    renderHistory();
+  }
+
+  function notify(title, body) {
+    if (!state.notificationsEnabled) return;
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    try { new Notification(title, { body: body }); } catch (e) {}
+  }
+
+  async function runAnalysis() {
+    var runBtn = $("runNowBtn");
+    runBtn.disabled = true;
+    runBtn.textContent = "Analyzing...";
+
+    try {
+      var symbols = allSymbols();
+      var result = await fetchAllQuotes(symbols);
+      var quotes = result.quotes;
+
+      Object.keys(quotes).forEach(function (symbol) { recordPriceHistory(symbol, quotes[symbol]); });
+
+      var recommendations = buildRecommendations(quotes);
+
+      state.lastRun = Date.now();
+      state.history.push({ ts: state.lastRun, summary: recommendations.summary });
+      if (state.history.length > 200) state.history = state.history.slice(-200);
+      saveState();
+
+      renderAll(quotes, recommendations);
+      notify("Stock Game Advisor", recommendations.summary);
+    } catch (e) {
+      $("recommendationSummary").textContent = "Analysis failed: " + e.message;
+    } finally {
+      runBtn.disabled = false;
+      runBtn.textContent = "Run analysis now";
+      resetCountdown();
+    }
+  }
+
+  function resetCountdown() { secondsLeft = refreshIntervalSeconds(); }
+
+  function renderCountdown() {
+    var mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+    var ss = String(secondsLeft % 60).padStart(2, "0");
+    $("countdownValue").textContent = mm + ":" + ss;
+  }
+
+  function tickCountdown() {
+    if (secondsLeft <= 0) { resetCountdown(); renderCountdown(); runAnalysis(); return; }
+    secondsLeft -= 1;
+    renderCountdown();
+  }
+
+  function startScheduler() {
+    resetCountdown();
+    renderCountdown();
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(tickCountdown, 1000);
+  }
+
+  function bindEvents() {
+    $("runNowBtn").addEventListener("click", runAnalysis);
+
+    $("dismissBannerBtn").addEventListener("click", function () {
+      state.isSample = false;
+      state.holdings = [];
+      state.watchlist = [];
+      state.manualPrices = {};
+      state.priceHistory = {};
+      state.history = [];
+      saveState();
+      syncSettingsInputs();
+      renderAll();
+    });
+
+    $("bankrollInput").addEventListener("change", function () {
+      state.bankroll = Math.max(0, parseFloat($("bankrollInput").value) || 0);
+      saveState(); renderBudget();
+    });
+
+    $("tradingCapInput").addEventListener("change", function () {
+      state.tradingCap = Math.max(0, parseFloat($("tradingCapInput").value) || 0);
+      saveState(); renderBudget();
+    });
+
+    $("dataModeSelect").addEventListener("change", function () {
+      state.dataMode = $("dataModeSelect").value;
+      $("manualPricesCard").hidden = state.dataMode !== "manual";
+      saveState();
+    });
+
+    $("apiKeyInput").addEventListener("change", function () {
+      state.apiKey = $("apiKeyInput").value.trim();
+      saveState();
+    });
+
+    $("refreshMinutesSelect").addEventListener("change", function () {
+      state.refreshMinutes = parseInt($("refreshMinutesSelect").value, 10);
+      saveState(); startScheduler();
+    });
+
+    $("notificationsToggle").addEventListener("change", async function () {
+      if ($("notificationsToggle").checked && "Notification" in window) {
+        var perm = await Notification.requestPermission();
+        state.notificationsEnabled = perm === "granted";
+        $("notificationsToggle").checked = state.notificationsEnabled;
+      } else {
+        state.notificationsEnabled = false;
+      }
+      saveState();
+    });
+
+    $("addHoldingForm").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var symbol = $("holdingSymbol").value.trim().toUpperCase();
+      var shares = parseFloat($("holdingShares").value);
+      var avgCost = parseFloat($("holdingAvgCost").value);
+      if (!symbol || !shares || !avgCost) return;
+      state.isSample = false;
+      var existing = state.holdings.find(function (h) { return h.symbol === symbol; });
+      if (existing) { existing.shares = shares; existing.avgCost = avgCost; }
+      else { state.holdings.push({ symbol: symbol, shares: shares, avgCost: avgCost }); }
+      saveState();
+      ev.target.reset();
+      syncSettingsInputs();
+      renderAll();
+    });
+
+    $("addWatchForm").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var symbol = $("watchSymbol").value.trim().toUpperCase();
+      if (!symbol || state.watchlist.indexOf(symbol) !== -1) return;
+      state.isSample = false;
+      state.watchlist.push(symbol);
+      saveState();
+      ev.target.reset();
+      syncSettingsInputs();
+      renderAll();
+    });
+  }
+
+  function init() {
+    syncSettingsInputs();
+
+    var quotesForRender = {};
+    var recs = null;
+    if (state.isSample) {
+      Object.keys(state.manualPrices).forEach(function (sym) {
+        var q = manualQuote(sym);
+        quotesForRender[sym] = q;
+        if ((state.priceHistory[sym] || []).length < 2) recordPriceHistory(sym, q);
+      });
+      recs = buildRecommendations(quotesForRender);
+      saveState();
+    }
+
+    renderAll(quotesForRender, recs);
+    bindEvents();
+    startScheduler();
+  }
+
+  init();
+})();
+</script>
 </body>
 </html>

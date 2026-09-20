@@ -30,25 +30,36 @@ yourself, then tell this app what you now hold.
   the snapshots it has collected in your browser this session, and a
   volatility penalty into a score. Existing holdings get SELL/TRIM/HOLD
   signals based on your P/L and trend; watchlist symbols get BUY/WATCH/AVOID
-  signals, with buy size capped at 25% of the trading budget per symbol.
+  signals. Every watchlist row also shows exactly how many shares (and
+  dollars) the budget allows if you bought that symbol right now, capped at
+  25% of the trading budget per symbol.
 - **Timer** — runs automatically every 30 or 60 minutes (your choice), or on
   demand via "Run analysis now". Optionally fires a browser notification
   with the latest summary.
 - **History** — every run's headline recommendation is logged so you can see
   what the advisor said over time.
 
-## Running it
+The whole app is one file, `index.html` — no build step, no backend, no
+dependencies to install.
 
-This is a static site — no build step, no backend.
+## Opening it as its own website
 
-```bash
-# from the project root
-python3 -m http.server 8000
-# then open http://localhost:8000
-```
+**Quickest — just open the file.** Double-click `index.html` (or drag it into
+Chrome). Everything works from the local file; your data still saves in that
+browser via `localStorage`.
 
-Or open `index.html` directly in a browser, or deploy the folder as-is to
-GitHub Pages / Netlify / any static host.
+**A real URL you can bookmark or share — GitHub Pages (free):**
+
+1. On this repo on GitHub, go to **Settings → Pages**.
+2. Under "Build and deployment", set **Source** to "Deploy from a branch".
+3. Pick this branch (or merge it into `main` first) and folder `/ (root)`,
+   then **Save**.
+4. GitHub publishes it in a minute or two at
+   `https://<your-username>.github.io/<repo-name>/`. That link is a real,
+   permanent website you can open in Chrome or any browser, on any device.
+
+Any other static host (Netlify, Vercel, Cloudflare Pages) works the same way
+— just point it at this repo; there's nothing to configure or build.
 
 ## Disclaimer
 
