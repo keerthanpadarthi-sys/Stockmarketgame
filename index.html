@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Game Advisor</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-title">
+    <h1>Stock Game Advisor</h1>
+    <p class="subtitle">Decision support for your <a href="https://www.stockmarketgame.org/pa.html" target="_blank" rel="noopener">Stock Market Game</a> portfolio</p>
+  </div>
+  <div class="topbar-actions">
+    <div class="countdown">
+      <span id="countdownLabel">Next check-in</span>
+      <span id="countdownValue">--:--</span>
+    </div>
+    <button id="runNowBtn" class="btn btn-primary">Run analysis now</button>
+  </div>
+</header>
+
+<main>
+  <section class="card" id="budgetCard">
+    <h2>Trading budget</h2>
+    <div class="budget-grid">
+      <label>Total bankroll ($)
+        <input type="number" id="bankrollInput" step="1000" min="0">
+      </label>
+      <label>Amount the advisor may put to work ($)
+        <input type="number" id="tradingCapInput" step="1000" min="0">
+      </label>
+    </div>
+    <div class="budget-bar-wrap">
+      <div class="budget-bar"><div id="budgetBarFill" class="budget-bar-fill"></div></div>
+      <div class="budget-legend">
+        <span><strong id="deployedValue">$0</strong> deployed</span>
+        <span><strong id="remainingValue">$0</strong> available to invest</span>
+        <span><strong id="reserveValue">$0</strong> held in reserve, never touched</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="recommendationCard">
+    <h2>What to do right now</h2>
+    <div id="recommendationSummary" class="recommendation-summary">
+      Run an analysis to get a recommendation.
+    </div>
+    <div id="recommendationList" class="recommendation-list"></div>
+  </section>
+
+  <div class="two-col">
+    <section class="card" id="holdingsCard">
+      <h2>Current holdings <span class="hint">(update after each trade you make on the game site)</span></h2>
+      <table id="holdingsTable">
+        <thead>
+          <tr><th>Symbol</th><th>Shares</th><th>Avg cost</th><th>Price</th><th>Value</th><th>P/L</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <form id="addHoldingForm" class="inline-form">
+        <input type="text" id="holdingSymbol" placeholder="Symbol e.g. AAPL" maxlength="8" required>
+        <input type="number" id="holdingShares" placeholder="Shares" min="0" step="1" required>
+        <input type="number" id="holdingAvgCost" placeholder="Avg cost $" min="0" step="0.01" required>
+        <button type="submit" class="btn">Add / update</button>
+      </form>
+    </section>
+
+    <section class="card" id="watchlistCard">
+      <h2>Watchlist</h2>
+      <table id="watchlistTable">
+        <thead>
+          <tr><th>Symbol</th><th>Price</th><th>Change</th><th>Score</th><th>Signal</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <form id="addWatchForm" class="inline-form">
+        <input type="text" id="watchSymbol" placeholder="Symbol e.g. MSFT" maxlength="8" required>
+        <button type="submit" class="btn">Add to watchlist</button>
+      </form>
+    </section>
+  </div>
+
+  <section class="card" id="manualPricesCard" hidden>
+    <h2>Manual prices <span class="hint">(used when live data isn't available)</span></h2>
+    <p class="hint">Enter current prices from the game site's quote page for each symbol below, then run the analysis.</p>
+    <div id="manualPricesGrid" class="manual-grid"></div>
+  </section>
+
+  <section class="card" id="settingsCard">
+    <h2>Settings</h2>
+    <div class="settings-grid">
+      <label>Data source
+        <select id="dataModeSelect">
+          <option value="live">Live quotes (Finnhub API)</option>
+          <option value="manual">Manual entry</option>
+        </select>
+      </label>
+      <label>Finnhub API key <span class="hint">(free at finnhub.io, kept only in this browser)</span>
+        <input type="text" id="apiKeyInput" placeholder="Paste API key">
+      </label>
+      <label>Check-in frequency
+        <select id="refreshMinutesSelect">
+          <option value="30">Every 30 minutes</option>
+          <option value="60">Every hour</option>
+        </select>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="notificationsToggle">
+        Notify me in the browser when a new recommendation is ready
+      </label>
+    </div>
+  </section>
+
+  <section class="card" id="historyCard">
+    <h2>Recommendation history</h2>
+    <div id="historyList" class="history-list"></div>
+  </section>
+</main>
+
+<footer>
+  <p>This tool analyzes real market data to produce rule-based, educational suggestions for the <em>Stock Market Game</em> paper-trading simulation only. It is not financial advice and does not place trades for you &mdash; execute anything you decide on the <a href="https://www.stockmarketgame.org/pa.html" target="_blank" rel="noopener">game site</a> yourself, then update your holdings here.</p>
+</footer>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
