@@ -133,6 +133,7 @@
   .btn:hover { border-color: var(--accent); }
   .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
   .btn-primary:hover { filter: brightness(1.06); }
+  .btn-trade { margin-top: 8px; font-size: 0.8rem; padding: 4px 10px; }
   .btn-primary:disabled { opacity: 0.6; cursor: default; }
   .btn-text { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.78rem; padding: 0; text-decoration: underline; }
   .btn-danger { background: none; border: none; color: var(--loss); cursor: pointer; font-size: 0.8rem; padding: 0; }
@@ -284,11 +285,13 @@
       <span id="countdownLabel">Next check-in</span>
       <span id="countdownValue">--:--</span>
     </div>
+    <button id="syncGameBtn" class="btn" hidden>Sync from game</button>
     <button id="runNowBtn" class="btn btn-primary">Run analysis now</button>
   </div>
 </header>
 
 <div class="page">
+  <p id="gameStatus" class="card-sub" hidden style="margin:0 0 12px"></p>
 
   <div class="banner" id="sampleBanner">
     <span>Showing example holdings, a sample watchlist, and made-up prices so you can see how the advisor works. Edit everything below to match your own <a href="https://www.stockmarketgame.org/pa.html" target="_blank" rel="noopener">Stock Market Game</a> portfolio.</span>
@@ -376,10 +379,14 @@
         <select id="dataModeSelect">
           <option value="manual">Manual entry</option>
           <option value="live">Live quotes (Finnhub API)</option>
+          <option value="game">My game account (connector)</option>
         </select>
       </label>
       <label>Finnhub API key <span style="font-size:0.72rem">(free at finnhub.io, kept only in this browser)</span>
         <input type="text" id="apiKeyInput" placeholder="Paste API key">
+      </label>
+      <label>Connector address <span style="font-size:0.72rem">(your Render address + / + your secret, kept only in this browser)</span>
+        <input type="text" id="connectorUrlInput" placeholder="https://your-app.onrender.com/your-secret" autocomplete="off">
       </label>
       <label>Check-in frequency
         <select id="refreshMinutesSelect">
@@ -402,7 +409,7 @@
 </div>
 
 <footer>
-  <p>This tool analyzes made-up and/or user-supplied prices to produce rule-based, educational suggestions for the <em>Stock Market Game</em> paper-trading simulation only. It is not financial advice and does not place trades for you &mdash; execute anything you decide on the <a href="https://www.stockmarketgame.org/pa.html" target="_blank" rel="noopener">game site</a> yourself, then update your holdings above. All data you enter stays in this browser only.</p>
+  <p>This tool analyzes made-up and/or user-supplied prices to produce rule-based, educational suggestions for the <em>Stock Market Game</em> paper-trading simulation only. It is not financial advice. If you connect your own game connector in Settings, it can sync your holdings and place trades on the <a href="https://www.stockmarketgame.org/pa.html" target="_blank" rel="noopener">game site</a> after you confirm each one; otherwise, trade on the game site yourself and update your holdings above. Your settings stay in this browser only.</p>
 </footer>
 
 <script>
@@ -421,6 +428,7 @@
       ],
       watchlist: ["MSFT", "AMZN", "GOOGL", "AVGO"],
       apiKey: "",
+      connectorUrl: "",
       dataMode: "manual",
       refreshMinutes: 30,
       notificationsEnabled: false,
@@ -470,6 +478,85 @@
   function $(id) { return document.getElementById(id); }
   function money(n) { return "$" + Math.round(n).toLocaleString(); }
 
+  // ---------- game connector ----------
+
+  function connectorBase() {
+    var u = (state.connectorUrl || "").trim().replace(/\/+$/, "").replace(/\/(mcp|api)$/, "");
+    return u;
+  }
+  function gameMode() { return state.dataMode === "game" && connectorBase().length > 0; }
+
+  async function api(path, body) {
+    var opts = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
+    var res = await fetch(connectorBase() + "/api/" + path, opts);
+    var data;
+    try { data = await res.json(); } catch (e) { throw new Error("Connector answered HTTP " + res.status); }
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  }
+
+  function setGameStatus(text, isError) {
+    var el = $("gameStatus");
+    el.hidden = !text;
+    el.textContent = text || "";
+    el.style.color = isError ? "var(--loss)" : "";
+  }
+
+  async function syncFromGame() {
+    setGameStatus("Syncing with your game account... (a sleeping server can take up to a minute)");
+    var p = await api("portfolio");
+    if (!p.holdings) throw new Error("No holdings came back");
+    state.holdings = p.holdings.filter(function (h) { return !h.short; }).map(function (h) {
+      return { symbol: h.symbol, shares: h.shares, avgCost: h.avgCost || h.price || 0 };
+    });
+    if (typeof p.totalEquity === "number" && p.totalEquity > 0) {
+      state.bankroll = Math.round(p.totalEquity);
+      if (state.tradingCap > state.bankroll) state.tradingCap = state.bankroll;
+    }
+    state.gameCash = typeof p.cash === "number" ? p.cash : null;
+    state.lastSync = Date.now();
+    state.isSample = false;
+    saveState();
+    syncSettingsInputs();
+    setGameStatus("Synced with game at " + new Date().toLocaleTimeString() +
+      (state.gameCash != null ? " \u2014 cash " + money(state.gameCash) : "") +
+      ", " + state.holdings.length + " holding(s).");
+  }
+
+  function siteMessage(obj) {
+    var found = [];
+    (function walk(x) {
+      if (!x) return;
+      if (typeof x === "string") return;
+      Object.keys(x).forEach(function (k) {
+        var v = x[k];
+        if (typeof v === "string" && /message|msg|error|page_text|result|status/i.test(k)) found.push(v);
+        else if (typeof v === "object") walk(v);
+      });
+    })(obj);
+    return found.length ? found.join(" | ") : JSON.stringify(obj).slice(0, 400);
+  }
+
+  async function tradeOnGame(item) {
+    var action = item.type === "BUY" ? "buy" : "sell";
+    var shares = Math.floor(item.shares);
+    if (!shares) return;
+    try {
+      setGameStatus("Checking " + action.toUpperCase() + " " + shares + " " + item.symbol + " with the game (nothing is traded yet)...");
+      var preview = await api("preview", { symbol: item.symbol, action: action, shares: shares, orderType: "market" });
+      var ok = window.confirm(
+        "Place this trade on the Stock Market Game?\n\n" + preview.order +
+        "\n\nGame says: " + siteMessage(preview.site_verification));
+      if (!ok) { setGameStatus("Trade cancelled. Nothing was placed."); return; }
+      var result = await api("trade", { previewId: preview.preview_id });
+      window.alert("Game response: " + siteMessage(result.site_response));
+      await syncFromGame();
+      renderAll();
+    } catch (e) {
+      setGameStatus("Trade failed: " + e.message, true);
+    }
+  }
+
   // ---------- quotes ----------
 
   function manualQuote(symbol) {
@@ -491,6 +578,26 @@
     var quotes = {};
     var errors = {};
     var useLive = state.dataMode === "live" && state.apiKey.trim().length > 0;
+
+    if (gameMode()) {
+      try {
+        var q = await api("quotes?symbols=" + encodeURIComponent(symbols.join(",")));
+        symbols.forEach(function (symbol) {
+          var d = q[symbol];
+          if (d && typeof d.price === "number") {
+            quotes[symbol] = { price: d.price, prevClose: d.prevClose || d.price, high: d.high || d.price,
+              low: d.low || d.price, open: d.open || d.price, ts: Date.now(), source: "game" };
+          } else {
+            errors[symbol] = "No price from connector.";
+            var m = manualQuote(symbol);
+            if (m) quotes[symbol] = m;
+          }
+        });
+        return { quotes: quotes, errors: errors };
+      } catch (e) {
+        setGameStatus("Couldn't get prices from the connector (" + e.message + "). Using manual prices.", true);
+      }
+    }
 
     await Promise.all(symbols.map(async function (symbol) {
       if (useLive) {
@@ -634,6 +741,8 @@
     $("tradingCapInput").value = state.tradingCap;
     $("dataModeSelect").value = state.dataMode;
     $("apiKeyInput").value = state.apiKey;
+    $("connectorUrlInput").value = state.connectorUrl || "";
+    $("syncGameBtn").hidden = !gameMode();
     $("refreshMinutesSelect").value = String(state.refreshMinutes);
     $("notificationsToggle").checked = state.notificationsEnabled;
     $("manualPricesCard").hidden = state.dataMode !== "manual";
@@ -769,6 +878,13 @@
         div.innerHTML =
           "<div><div class=\"rec-main\">" + main + "</div><div class=\"rec-reason\">" + item.reason + "</div></div>" +
           "<span class=\"badge badge-" + item.type + "\">" + item.type + "</span>";
+        if (gameMode() && (item.type === "BUY" || item.type === "SELL" || item.type === "TRIM") && item.shares >= 1) {
+          var tb = document.createElement("button");
+          tb.className = "btn btn-trade";
+          tb.textContent = "Place on game";
+          tb.addEventListener("click", function () { tradeOnGame(item); });
+          div.firstChild.appendChild(tb);
+        }
         list.appendChild(div);
       });
   }
@@ -810,6 +926,10 @@
     runBtn.textContent = "Analyzing...";
 
     try {
+      if (gameMode()) {
+        try { await syncFromGame(); }
+        catch (e) { setGameStatus("Couldn't sync with the game: " + e.message, true); }
+      }
       var symbols = allSymbols();
       var result = await fetchAllQuotes(symbols);
       var quotes = result.quotes;
@@ -883,7 +1003,22 @@
     $("dataModeSelect").addEventListener("change", function () {
       state.dataMode = $("dataModeSelect").value;
       $("manualPricesCard").hidden = state.dataMode !== "manual";
-      saveState();
+      saveState(); syncSettingsInputs();
+    });
+
+    $("connectorUrlInput").addEventListener("change", async function () {
+      state.connectorUrl = $("connectorUrlInput").value.trim();
+      saveState(); syncSettingsInputs();
+      if (!connectorBase()) return;
+      try { setGameStatus("Testing connector..."); await api("ping"); setGameStatus("Connector reachable. Pick \u201cMy game account\u201d as the data source, then Sync."); }
+      catch (e) { setGameStatus("Can't reach the connector: " + e.message, true); }
+    });
+
+    $("syncGameBtn").addEventListener("click", async function () {
+      var b = $("syncGameBtn"); b.disabled = true;
+      try { await syncFromGame(); renderAll(); }
+      catch (e) { setGameStatus("Couldn't sync with the game: " + e.message, true); }
+      finally { b.disabled = false; }
     });
 
     $("apiKeyInput").addEventListener("change", function () {
